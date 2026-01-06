@@ -107,7 +107,7 @@ def play_video_ascii(video_path):
 if __name__ == "__main__":
     # Ganti 'contoh_video.mp4' dengan path file videomu sendiri.
     # Gunakan video pendek dengan kontras tinggi (hitam putih jelas) untuk hasil terbaik.
-    video_path = "D:\MAGANG\TENXI.mp4" 
+    video_path = r"D:\MAGANG\TENXI.mp4"
     
     # Bersihkan layar dulu sebelum mulai
     os.system('cls' if os.name == 'nt' else 'clear')
