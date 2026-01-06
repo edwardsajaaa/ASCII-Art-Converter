@@ -43,38 +43,40 @@ def play_video_ascii(video_path):
     except:
         frame_delay = 0.03 # Default manual jika gagal deteksi FPS (sekitar 30fps)
 
+
+    def rgb_to_ansi(r, g, b):
+        return f"\033[38;2;{r};{g};{b}m"
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break # Video selesai
 
-        # --- LANGKAH 1 & 2: Resize dan Grayscale ---
-        # Hitung aspek rasio agar gambar tidak gepeng
+        # --- Resize frame ---
         height, width, _ = frame.shape
         aspect_ratio = height / width
-        # Karakter terminal biasanya lebih tinggi daripada lebarnya (sekitar 2x), 
-        # jadi kita sesuaikan tinggi barunya.
-        new_height = int(aspect_ratio * NEW_WIDTH * 0.55) 
-        
+        new_height = int(aspect_ratio * NEW_WIDTH * 0.55)
         resized_frame = cv2.resize(frame, (NEW_WIDTH, new_height))
         grayscale_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
 
-        # --- LANGKAH 3: Konversi ke String ASCII ---
-        ascii_str = pixel_to_ascii(grayscale_frame)
-        
-        # Format string menjadi baris-baris agar sesuai lebar terminal
+        # --- Konversi ke ASCII dan warna ---
         ascii_img = ""
-        for i in range(0, len(ascii_str), NEW_WIDTH):
-            ascii_img += ascii_str[i:i+NEW_WIDTH] + "\n"
+        for y in range(resized_frame.shape[0]):
+            for x in range(resized_frame.shape[1]):
+                pixel_val = grayscale_frame[y, x]
+                bucket_size = 256 / len(ASCII_CHARS)
+                index = int(pixel_val / bucket_size)
+                if index >= len(ASCII_CHARS):
+                    index = len(ASCII_CHARS) - 1
+                char = ASCII_CHARS[index]
+                b, g, r = resized_frame[y, x] # OpenCV uses BGR
+                ansi_code = rgb_to_ansi(r, g, b)
+                ascii_img += f"{ansi_code}{char}\033[0m"
+            ascii_img += "\n"
 
-        # --- LANGKAH 4: Tampilkan di Terminal ---
-        # Trik untuk mengurangi kedipan (flicker) di terminal
-        # Daripada membersihkan layar (cls/clear), kita pindahkan kursor ke kiri atas
-        sys.stdout.write("\033[H") 
+        sys.stdout.write("\033[H")
         sys.stdout.write(ascii_img)
         sys.stdout.flush()
-        
-        # Tunggu sebentar agar kecepatan video sesuai aslinya
         time.sleep(frame_delay)
 
     cap.release()
