@@ -2,6 +2,9 @@ import cv2
 import os
 import time
 import sys
+import threading
+import queue
+from blessed import Terminal
 
 # --- KONFIGURASI ---
 # Karakter ASCII dari yang paling 'gelap' (padat) ke paling 'terang' (tipis)
@@ -29,59 +32,75 @@ def pixel_to_ascii(image):
     return ascii_str
 
 def play_video_ascii(video_path):
-    # Buka file video menggunakan OpenCV
     cap = cv2.VideoCapture(video_path)
-
     if not cap.isOpened():
         print("Error: Tidak bisa membuka file video.")
         return
 
-    # Coba dapatkan FPS (Frames Per Second) video asli agar kecepatannya pas
     try:
         fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_delay = 1.0 / fps # Waktu tunggu antar frame dalam detik
+        frame_delay = 1.0 / fps
     except:
-        frame_delay = 0.03 # Default manual jika gagal deteksi FPS (sekitar 30fps)
-
+        frame_delay = 0.03
 
     def rgb_to_ansi(r, g, b):
         return f"\033[38;2;{r};{g};{b}m"
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break # Video selesai
+    frame_queue = queue.Queue(maxsize=5)
+    stop_flag = threading.Event()
 
-        # --- Resize frame ---
-        height, width, _ = frame.shape
-        aspect_ratio = height / width
-        new_height = int(aspect_ratio * NEW_WIDTH * 0.55)
-        resized_frame = cv2.resize(frame, (NEW_WIDTH, new_height))
-        grayscale_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
+    def frame_reader():
+        while not stop_flag.is_set():
+            ret, frame = cap.read()
+            if not ret:
+                frame_queue.put(None)
+                break
+            frame_queue.put(frame)
 
-        # --- Konversi ke ASCII dan warna ---
-        ascii_img = ""
-        for y in range(resized_frame.shape[0]):
-            for x in range(resized_frame.shape[1]):
-                pixel_val = grayscale_frame[y, x]
-                bucket_size = 256 / len(ASCII_CHARS)
-                index = int(pixel_val / bucket_size)
-                if index >= len(ASCII_CHARS):
-                    index = len(ASCII_CHARS) - 1
-                char = ASCII_CHARS[index]
-                b, g, r = resized_frame[y, x] # OpenCV uses BGR
-                ansi_code = rgb_to_ansi(r, g, b)
-                ascii_img += f"{ansi_code}{char}\033[0m"
-            ascii_img += "\n"
+    reader_thread = threading.Thread(target=frame_reader, daemon=True)
+    reader_thread.start()
 
-        sys.stdout.write("\033[H")
-        sys.stdout.write(ascii_img)
-        sys.stdout.flush()
-        time.sleep(frame_delay)
+    term = Terminal()
+    prev_ascii = []
+    with term.fullscreen(), term.hidden_cursor():
+        print(term.home + term.clear)
+        while True:
+            frame = frame_queue.get()
+            if frame is None:
+                break
+            height, width, _ = frame.shape
+            aspect_ratio = height / width
+            new_height = int(aspect_ratio * NEW_WIDTH * 0.55)
+            resized_frame = cv2.resize(frame, (NEW_WIDTH, new_height))
+            grayscale_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
 
+            ascii_lines = []
+            for y in range(resized_frame.shape[0]):
+                line = ""
+                for x in range(resized_frame.shape[1]):
+                    pixel_val = grayscale_frame[y, x]
+                    bucket_size = 256 / len(ASCII_CHARS)
+                    index = int(pixel_val / bucket_size)
+                    if index >= len(ASCII_CHARS):
+                        index = len(ASCII_CHARS) - 1
+                    char = ASCII_CHARS[index]
+                    b, g, r = resized_frame[y, x]
+                    ansi_code = rgb_to_ansi(r, g, b)
+                    line += f"{ansi_code}{char}\033[0m"
+                ascii_lines.append(line)
+
+            # Hanya update baris yang berubah
+            for y, line in enumerate(ascii_lines):
+                if y >= len(prev_ascii) or prev_ascii[y] != line:
+                    print(term.move_yx(y, 0) + line, end="")
+            prev_ascii = ascii_lines
+            sys.stdout.flush()
+            time.sleep(frame_delay)
+
+    stop_flag.set()
+    reader_thread.join()
     cap.release()
-    # Bersihkan layar setelah selesai
-    os.system('cls' if os.name == 'nt' else 'clear')
+    print(term.normal + term.clear)
     print("Video selesai diputar dalam mode ASCII!")
 
 # --- CARA MENJALANKAN ---
