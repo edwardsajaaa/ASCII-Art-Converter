@@ -14,7 +14,7 @@ Script ini mengubah video menjadi tampilan ASCII art secara real-time di termina
 
 2. **Siapkan Video**
 
-   Letakkan file video (misal: `TENXI.mp4`) di folder yang sama dengan script, atau ubah variabel `video_path` di dalam script sesuai lokasi file video kamu.
+   Letakkan file video (misal: `CONTOH.mp4`) di folder yang sama dengan script, atau ubah variabel `video_path` di dalam script sesuai lokasi file video kamu.
 
 3. **Jalankan Script**
 
