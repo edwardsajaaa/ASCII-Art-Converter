@@ -6,13 +6,21 @@ import threading
 import queue
 from blessed import Terminal
 
-# --- KONFIGURASI ---
+from blessed import Terminal
 # Karakter ASCII dari yang paling 'gelap' (padat) ke paling 'terang' (tipis)
 # Kamu bisa bereksperimen dengan mengganti urutan atau jenis karakternya.
 # Urutan dibalik: spasi di depan, simbol padat di belakang
+<<<<<<< HEAD
 ASCII_CHARS = " .:-=+*#%@"
 # Lebar terminal yang diinginkan (lebih kecil agar lebih ringan)
 NEW_WIDTH = 100
+=======
+ASCII_CHARS = " .:-=+*#%@" 
+# Contoh lain: "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
+
+# Lebar terminal yang diinginkan (semakin besar, semakin detail tapi butuh layar besar)
+NEW_WIDTH = 100 
+>>>>>>> d796f58f7f4e03c06ce82dd339a860252dfdb0f3
 
 def pixel_to_ascii(image):
     pixels = image.flatten()
@@ -41,7 +49,12 @@ def play_video_ascii(video_path):
     except:
         frame_delay = 0.03
 
+<<<<<<< HEAD
 
+=======
+    def rgb_to_ansi(r, g, b):
+        return f"\033[38;2;{r};{g};{b}m"
+>>>>>>> d796f58f7f4e03c06ce82dd339a860252dfdb0f3
 
     frame_queue = queue.Queue(maxsize=5)
     stop_flag = threading.Event()
@@ -57,38 +70,61 @@ def play_video_ascii(video_path):
     reader_thread = threading.Thread(target=frame_reader, daemon=True)
     reader_thread.start()
 
+<<<<<<< HEAD
 
-    term = Terminal()
-    print(term.clear + term.hide_cursor)
-    try:
-        while True:
-            frame = frame_queue.get()
-            if frame is None:
-                break
-            height, width, _ = frame.shape
-            aspect_ratio = height / width
-            new_height = int(aspect_ratio * NEW_WIDTH * 0.55)
-            resized_frame = cv2.resize(frame, (NEW_WIDTH, new_height))
-            grayscale_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
+            term = Terminal()
+            print(term.clear + term.hide_cursor)
+            try:
+                while True:
+                    frame = frame_queue.get()
+                    if frame is None:
+                        break
+                    height, width, _ = frame.shape
+                    aspect_ratio = height / width
+                    new_height = int(aspect_ratio * NEW_WIDTH * 0.55)
+                    resized_frame = cv2.resize(frame, (NEW_WIDTH, new_height))
+                    grayscale_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
 
-            ascii_lines = []
-            for y in range(grayscale_frame.shape[0]):
-                line = ""
-                for x in range(grayscale_frame.shape[1]):
-                    pixel_val = grayscale_frame[y, x]
-                    bucket_size = 256 / len(ASCII_CHARS)
-                    index = int(pixel_val / bucket_size)
-                    if index >= len(ASCII_CHARS):
-                        index = len(ASCII_CHARS) - 1
-                    char = ASCII_CHARS[index]
-                    line += char
-                ascii_lines.append(line)
+                    ascii_lines = []
+                    for y in range(grayscale_frame.shape[0]):
+                        line = ""
+                        for x in range(grayscale_frame.shape[1]):
+                            pixel_val = grayscale_frame[y, x]
+                            bucket_size = 256 / len(ASCII_CHARS)
+                            index = int(pixel_val / bucket_size)
+                            if index >= len(ASCII_CHARS):
+                                index = len(ASCII_CHARS) - 1
+                            char = ASCII_CHARS[index]
+                            line += char
+                        ascii_lines.append(line)
 
-            print(term.move(0, 0) + '\n'.join(ascii_lines), end="")
-            sys.stdout.flush()
+                    print(term.move(0, 0) + '\n'.join(ascii_lines), end="")
+                    sys.stdout.flush()
+                    time.sleep(frame_delay)
+            finally:
+                print(term.normal_cursor)
+            stop_flag.set()
+            reader_thread.join()
+            cap.release()
+            print(term.normal + term.clear)
+            print("Video selesai diputar dalam mode ASCII!")
             time.sleep(frame_delay)
     finally:
         print(term.normal_cursor)
+=======
+                    b, g, r = resized_frame[y, x]
+                    ansi_code = rgb_to_ansi(r, g, b)
+                    line += f"{ansi_code}{char}\033[0m"
+                ascii_lines.append(line)
+
+            # Hanya update baris yang berubah
+            for y, line in enumerate(ascii_lines):
+                if y >= len(prev_ascii) or prev_ascii[y] != line:
+                    print(term.move_yx(y, 0) + line, end="")
+            prev_ascii = ascii_lines
+            sys.stdout.flush()
+            time.sleep(frame_delay)
+>>>>>>> d796f58f7f4e03c06ce82dd339a860252dfdb0f3
 
     stop_flag.set()
     reader_thread.join()
